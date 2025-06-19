@@ -70,14 +70,14 @@ streamlit run app.py
 ---
 
 ## 📌 Örnek Ekran Görüntüsü
-![image](https://github.com/user-attachments/assets/72c3a87d-0407-4897-b920-cf4de194df05),
-![image](https://github.com/user-attachments/assets/e431ca2c-0f04-4695-b724-d0f11409f2ee),
+![image](https://github.com/user-attachments/assets/72c3a87d-0407-4897-b920-cf4de194df05)
+![image](https://github.com/user-attachments/assets/e431ca2c-0f04-4695-b724-d0f11409f2ee)
 ![image](https://github.com/user-attachments/assets/3d5e51e3-f95c-4996-8bb0-cdb0733fa77a)
 
 ---
 
 ## 👤 Katkıda Bulunanlar
-- Onur Çokyiğit
+- Onur ÇOKYİĞİT - https://github.com/OnurCokyigit
 
 ---
 
