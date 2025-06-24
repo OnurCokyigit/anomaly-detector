@@ -83,7 +83,7 @@ def insert_transaction(user_id, amount, txn_time, location):
     conn = sqlite3.connect("anomaly_detection.db")
     cursor = conn.cursor()
 
-    # 🔒 Aynı işlem daha önce eklenmiş mi?
+    # Aynı işlem daha önce eklenmiş mi?
     cursor.execute("""
         SELECT COUNT(*) FROM transactions
         WHERE user_id = ? AND amount = ? AND txn_time = ? AND location = ?
@@ -92,7 +92,7 @@ def insert_transaction(user_id, amount, txn_time, location):
     if cursor.fetchone()[0] > 0:
         print("⚠️ Bu işlem zaten kayıtlı. Yeniden eklenmeyecek.")
         conn.close()
-        return None  # veya -1 dönebilirsin, interface tarafı buna göre mesaj verebilir
+        return None 
 
     txn = {
         "user_id": user_id,
