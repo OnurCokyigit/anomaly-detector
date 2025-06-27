@@ -1,115 +1,94 @@
 import sqlite3
 from datetime import datetime
+import joblib
+import os
+import subprocess
+import pandas as pd
 
-# --- Kullanıcının alışkanlık profilini çıkarır ---
-def get_user_profile(user_id):
-    conn = sqlite3.connect("anomaly_detection.db")
-    cursor = conn.cursor()
+# --- Model ve encoder dosyaları ---
+MODEL_PATH = "model/anomaly_model.pkl"
+ENC_USER_PATH = "model/label_user.pkl"
+ENC_LOC_PATH = "model/label_location.pkl"
 
-    cursor.execute("""
-        SELECT amount, txn_time, location FROM transactions
-        WHERE user_id = ?
-        ORDER BY txn_time DESC
-    """, (user_id,))
-    rows = cursor.fetchall()
-    conn.close()
-
-    if not rows:
-        return None  # Yeterli veri yok
-
-    amounts = [row[0] for row in rows]
-    times = [datetime.strptime(row[1], "%Y-%m-%d %H:%M:%S") for row in rows]
-    locations = [row[2] for row in rows]
-
-    # Ortalama ve standart sapma
-    avg_amount = sum(amounts) / len(amounts)
-    std_amount = (sum((x - avg_amount)**2 for x in amounts) / len(amounts))**0.5
-
-    # En sık lokasyon
-    most_common_location = max(set(locations), key=locations.count)
-
-    # En sık saat
-    hours = [t.hour for t in times]
-    most_common_hour = max(set(hours), key=hours.count)
-
-    return {
-        "avg_amount": avg_amount,
-        "std_amount": std_amount,
-        "location": most_common_location,
-        "hour": most_common_hour
-    }
-
-# --- Profil bazlı anomali kontrolü ---
-def is_anomalous(txn, profile):
-    if profile is None:
-        print("ℹ️ Profil bulunamadı, ilk işlemler olabilir. Anomali sayılmayacak.")
-        return False
-
-    amount = txn["amount"]
-    txn_time = datetime.strptime(txn["txn_time"], "%Y-%m-%d %H:%M:%S")
-    hour = txn_time.hour
-    location = txn["location"]
-
-    flags = 0
-
-    print("\n--- Anomali Analizi ---")
-    print(f"💰 Kullanıcının ortalama tutarı: {profile['avg_amount']:.2f}")
-    print(f"📈 Std sapma: {profile['std_amount']:.2f}")
-    print(f"📊 Gelen işlem tutarı: {amount}")
-    print(f"⏰ İşlem saati: {hour}, 👣 Lokasyon: {location}")
-    print(f"🔍 Sapma: {abs(amount - profile['avg_amount']):.2f} TL, Eşik: {1.5 * profile['std_amount']:.2f}")
-
-    # 1. Tutar kontrolü
-    if abs(amount - profile["avg_amount"]) > 1.5 * profile["std_amount"]:
-        print("⚠️ Tutar eşik dışında")
-        flags += 1
-
-    # 2. Lokasyon kontrolü
-    if location != profile["location"]:
-        print(f"⚠️ Lokasyon farkı ({profile['location']} yerine {location})")
-        flags += 1
-
-    # 3. Saat kontrolü
-    if abs(hour - profile["hour"]) > 3:
-        print(f"⚠️ Saat farkı ({profile['hour']} yerine {hour})")
-        flags += 1
-
-    print(f"🚩 Toplam ihlal sayısı: {flags}\n")
-    return flags >= 2
-
+# --- Yüklemeye çalış ---
+try:
+    model = joblib.load(MODEL_PATH)
+    label_user = joblib.load(ENC_USER_PATH)
+    label_location = joblib.load(ENC_LOC_PATH)
+    print("✅ ML modeli ve encoder'lar yüklendi.")
+except Exception as e:
+    print(f"⚠️ Model veya encoder dosyaları yüklenemedi: {e}")
+    model = None
+    label_user = None
+    label_location = None
 
 # --- Yeni işlem veritabanına kaydeder ---
 def insert_transaction(user_id, amount, txn_time, location):
     conn = sqlite3.connect("anomaly_detection.db")
     cursor = conn.cursor()
 
-    # Aynı işlem daha önce eklenmiş mi?
+    # 🔁 Aynı işlem zaten var mı?
     cursor.execute("""
         SELECT COUNT(*) FROM transactions
         WHERE user_id = ? AND amount = ? AND txn_time = ? AND location = ?
     """, (user_id, amount, txn_time, location))
-
     if cursor.fetchone()[0] > 0:
-        print("⚠️ Bu işlem zaten kayıtlı. Yeniden eklenmeyecek.")
+        print("⚠️ Bu işlem zaten kayıtlı.")
         conn.close()
-        return None 
+        return None
 
-    txn = {
-        "user_id": user_id,
-        "amount": amount,
-        "txn_time": txn_time,
-        "location": location
-    }
+    # 🌟 ML tahmini yap
+    if model and label_user and label_location:
+        try:
+            hour = datetime.strptime(txn_time, "%Y-%m-%d %H:%M:%S").hour
 
-    profile = get_user_profile(user_id)
-    is_anomaly = 1 if is_anomalous(txn, profile) else 0
+            # Uyarı: eğer yeni user_id veya location görülmemişse -> 0 kabul et
+            if user_id in label_user.classes_:
+                user_encoded = label_user.transform([user_id])[0]
+            else:
+                print(f"⚠️ Yeni kullanıcı ID: {user_id} (daha önce görülmemiş)")
+                user_encoded = 0
 
+            if location in label_location.classes_:
+                location_encoded = label_location.transform([location])[0]
+            else:
+                print(f"⚠️ Yeni lokasyon: {location} (daha önce görülmemiş)")
+                location_encoded = 0
 
+            features = pd.DataFrame([{
+                "user_id": user_encoded,
+                "amount": amount,
+                "hour": hour,
+                "location": location_encoded
+            }])
+            prediction = model.predict(features)[0]
+            is_anomaly = int(prediction)
+            print(f"🤖 ML Tahmini: {is_anomaly}")
+        except Exception as e:
+            print(f"⚠️ ML tahmin hatası: {e}")
+            is_anomaly = 0
+    else:
+        print("ℹ️ Model/encoder eksik. Anomali kontrolü yapılmadı.")
+        is_anomaly = 0
+
+    # Veriyi kaydet
     cursor.execute("""
         INSERT INTO transactions (user_id, amount, txn_time, location, is_anomaly)
         VALUES (?, ?, ?, ?, ?)
     """, (user_id, amount, txn_time, location, is_anomaly))
     conn.commit()
+
+    # 🔄 İşlem sayısı kontrolü (her 100 işlemde bir yeniden eğit)
+    cursor.execute("SELECT COUNT(*) FROM transactions")
+    txn_count = cursor.fetchone()[0]
     conn.close()
 
-    return is_anomaly  # işlem sonrası sonucu geri döner
+    if txn_count % 100 == 0:
+        print(f"🔄 Toplam işlem sayısı: {txn_count}. Model yeniden eğitiliyor...")
+        try:
+            subprocess.run(["python", "ml_train.py"], check=True)
+            print("✅ Model yeniden eğitildi.")
+        except Exception as e:
+            print(f"❌ Model eğitimi sırasında hata: {e}")
+
+    return is_anomaly

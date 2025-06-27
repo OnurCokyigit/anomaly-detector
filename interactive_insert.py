@@ -1,5 +1,5 @@
 from datetime import datetime
-from insert_and_detect import insert_transaction
+from insert_and_detect import insert_transaction  # önceki kodlarını ayrı bir dosyaya taşıdıysan buradan al
 import sqlite3
 
 
