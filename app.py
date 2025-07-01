@@ -286,6 +286,16 @@ def main():
             st.warning(
                 "⚠️ Performans raporu bulunamadı. Lütfen önce `ml_train.py` dosyasını çalıştırarak modeli eğitin.")
 
+        st.subheader("🔍 Özellik Önem Grafiği")
+
+        try:
+            df_feat = pd.read_csv("model/feature_importance.csv")
+            st.bar_chart(df_feat.set_index("feature"))
+        except Exception as e:
+            st.warning(f"Özellik önem grafiği yüklenemedi: {e}")
+
+        st.caption("📌 Bu grafik, modelin hangi özelliklere göre karar verdiğini göstermektedir. \
+        Yüksek skor, modelin bu özelliği daha çok dikkate aldığı anlamına gelir.")
 
 if __name__ == "__main__":
     main()
