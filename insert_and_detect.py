@@ -3,6 +3,7 @@ from datetime import datetime
 import joblib
 import os
 import subprocess
+import sys
 import pandas as pd
 
 # --- Model ve encoder dosyaları ---
@@ -23,7 +24,9 @@ except Exception as e:
     label_location = None
 
 # --- Yeni işlem veritabanına kaydeder ---
-def insert_transaction(user_id, amount, txn_time, location):
+def insert_transaction(user_id, amount, txn_time, location,
+                       transaction_type=None, device_type=None, channel=None,
+                       browser_info=None, os_type=None, ip_address=None, session_duration=None):
     conn = sqlite3.connect("anomaly_detection.db")
     cursor = conn.cursor()
 
@@ -42,7 +45,6 @@ def insert_transaction(user_id, amount, txn_time, location):
         try:
             hour = datetime.strptime(txn_time, "%Y-%m-%d %H:%M:%S").hour
 
-            # Uyarı: eğer yeni user_id veya location görülmemişse -> 0 kabul et
             if user_id in label_user.classes_:
                 user_encoded = label_user.transform([user_id])[0]
             else:
@@ -73,12 +75,19 @@ def insert_transaction(user_id, amount, txn_time, location):
 
     # Veriyi kaydet
     cursor.execute("""
-        INSERT INTO transactions (user_id, amount, txn_time, location, is_anomaly)
-        VALUES (?, ?, ?, ?, ?)
-    """, (user_id, amount, txn_time, location, is_anomaly))
+        INSERT INTO transactions (
+            user_id, amount, txn_time, location, is_anomaly,
+            transaction_type, device_type, channel,
+            browser_info, os_type, ip_address, session_duration
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (
+        user_id, amount, txn_time, location, is_anomaly,
+        transaction_type, device_type, channel,
+        browser_info, os_type, ip_address, session_duration
+    ))
     conn.commit()
 
-    # 🔄 İşlem sayısı kontrolü (her 100 işlemde bir yeniden eğit)
     cursor.execute("SELECT COUNT(*) FROM transactions")
     txn_count = cursor.fetchone()[0]
     conn.close()
@@ -86,7 +95,7 @@ def insert_transaction(user_id, amount, txn_time, location):
     if txn_count % 100 == 0:
         print(f"🔄 Toplam işlem sayısı: {txn_count}. Model yeniden eğitiliyor...")
         try:
-            subprocess.run(["python", "ml_train.py"], check=True)
+            subprocess.run([sys.executable, "ml_train.py"], check=True)
             print("✅ Model yeniden eğitildi.")
         except Exception as e:
             print(f"❌ Model eğitimi sırasında hata: {e}")

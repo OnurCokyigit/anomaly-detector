@@ -1,7 +1,6 @@
 from datetime import datetime
-from insert_and_detect import insert_transaction  # önceki kodlarını ayrı bir dosyaya taşıdıysan buradan al
+from insert_and_detect import insert_transaction
 import sqlite3
-
 
 def get_user_ids():
     conn = sqlite3.connect("anomaly_detection.db")
@@ -11,10 +10,8 @@ def get_user_ids():
     conn.close()
     return user_ids
 
-
 def get_location_list():
     return ["Istanbul", "Ankara", "Izmir", "Bursa", "Antalya"]
-
 
 def main():
     print("=== İşlem Ekleme Arayüzü ===")
@@ -40,11 +37,21 @@ def main():
         else:
             txn_time = datetime.strptime(txn_time_input, "%Y-%m-%d %H:%M:%S").strftime("%Y-%m-%d %H:%M:%S")
 
+        transaction_type = input("İşlem Türü (ör. ödeme, transfer): ")
+        device_type = input("Cihaz Türü (ör. Mobile, Desktop): ")
+        channel = input("Kanal (ör. Web, App): ")
+        browser_info = input("Tarayıcı Bilgisi (ör. Chrome): ")
+        os_type = input("İşletim Sistemi (ör. Windows, Android): ")
+        ip_address = input("IP Adresi: ")
+        session_duration = float(input("Oturum Süresi (saniye): "))
+
     except Exception as e:
         print(f"⚠️ Hata: {e}")
+        return
 
-
-    result = insert_transaction(user_id, amount, txn_time, location)
+    result = insert_transaction(user_id, amount, txn_time, location,
+                                transaction_type, device_type, channel,
+                                browser_info, os_type, ip_address, session_duration)
 
     if result is None:
         print("❗ Aynı işlem zaten kayıtlı. Giriş iptal edildi.")
@@ -52,7 +59,6 @@ def main():
         print("⚠️ Bu işlem ANOMALİ olarak işaretlendi.")
     else:
         print("✅ Bu işlem normal.")
-
 
 if __name__ == "__main__":
     main()

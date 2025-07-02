@@ -1,4 +1,3 @@
-
 import streamlit as st
 import sqlite3
 from insert_and_detect import insert_transaction
@@ -15,17 +14,14 @@ def get_user_ids():
     conn.close()
     return user_ids
 
-
 def get_location_list():
     return ["Istanbul", "Ankara", "Izmir", "Bursa", "Antalya"]
-
 
 def load_user_data(user_id):
     conn = sqlite3.connect("anomaly_detection.db")
     df = pd.read_sql_query("SELECT * FROM transactions WHERE user_id = ?", conn, params=(user_id,))
     conn.close()
     return df
-
 
 def main():
     st.set_page_config(page_title="Anomali Tespiti", layout="wide")
@@ -51,8 +47,21 @@ def main():
         txn_time = datetime.combine(date, txn_time_input)
         txn_time_str = txn_time.strftime("%Y-%m-%d %H:%M:%S")
 
+        transaction_type = st.text_input("İşlem Türü (ör. ödeme, transfer)")
+        device_type = st.text_input("Cihaz Türü (ör. Mobile, Desktop)")
+        channel = st.text_input("Kanal (ör. Web, App)")
+        browser_info = st.text_input("Tarayıcı Bilgisi (ör. Chrome)")
+        os_type = st.text_input("İşletim Sistemi (ör. Windows, Android)")
+        ip_address = st.text_input("IP Adresi")
+        session_duration = st.number_input("Oturum Süresi (saniye)", min_value=0.0, step=1.0)
+
         if st.button("💾 İşlemi Kaydet"):
-            result = insert_transaction(user_id, amount, txn_time_str, location)
+            result = insert_transaction(
+                user_id, amount, txn_time_str, location,
+                transaction_type, device_type, channel,
+                browser_info, os_type, ip_address, session_duration
+            )
+
             if result is None:
                 st.markdown("""
                     <div style='background-color:#fff3cd; padding:10px; border-radius:10px;'>
@@ -125,11 +134,16 @@ def main():
 
             st.subheader(f"🔎 {selected_user} Kullanıcısına Ait {len(df_anomalies)} Anomali İşlem")
 
-            st.dataframe(df_anomalies[["txn_time", "amount", "location"]])
+            cols_to_show = [
+                "txn_time", "amount", "location", "transaction_type", "device_type",
+                "channel", "browser_info", "os_type", "ip_address", "session_duration"
+            ]
+
+            st.dataframe(df_anomalies[cols_to_show])
 
             st.download_button(
                 label="📥 Anomalileri İndir (CSV)",
-                data=df_anomalies.to_csv(index=False).encode("utf-8"),
+                data=df_anomalies[cols_to_show].to_csv(index=False).encode("utf-8"),
                 file_name=f"user_{selected_user}_anomalies.csv",
                 mime="text/csv"
             )
@@ -191,7 +205,13 @@ def main():
                     👤 <b>Kullanıcı ID:</b> {data['user_id']}<br>
                     💸 <b>Tutar:</b> {data['amount']} TL<br>
                     🗺️ <b>Lokasyon:</b> {data['location']}<br>
-                    ⏰ <b>Zaman:</b> {data['txn_time']}
+                    ⏰ <b>Zaman:</b> {data['txn_time']}<br>
+                    🧾 <b>İşlem Türü:</b> {data['transaction_type']}<br>
+                    💻 <b>Cihaz:</b> {data['device_type']} / {data['channel']}<br>
+                    🌐 <b>Tarayıcı:</b> {data['browser_info']}<br>
+                    🧠 <b>İşletim Sistemi:</b> {data['os_type']}<br>
+                    📶 <b>IP:</b> {data['ip_address']}<br>
+                    ⏱️ <b>Süre:</b> {data['session_duration']} sn
                 </div>
             """, unsafe_allow_html=True)
 
@@ -199,7 +219,14 @@ def main():
                 user_id=data["user_id"],
                 amount=data["amount"],
                 txn_time=data["txn_time"],
-                location=data["location"]
+                location=data["location"],
+                transaction_type=data.get("transaction_type"),
+                device_type=data.get("device_type"),
+                channel=data.get("channel"),
+                browser_info=data.get("browser_info"),
+                os_type=data.get("os_type"),
+                ip_address=data.get("ip_address"),
+                session_duration=data.get("session_duration")
             )
 
             if result == 1:
@@ -215,7 +242,6 @@ def main():
                     </div>
                 """, unsafe_allow_html=True)
 
-        # --- Otomatik Akış Modu ---
         if mode == "🔁 Otomatik Akış":
             start_button = st.button("▶️ Otomatik Akışı Başlat")
             stop_button = st.button("⛔ Durdur")
@@ -236,10 +262,8 @@ def main():
                             status_box.warning(f"⚠️ Beklenmedik yanıt: {response.status_code}")
                     except Exception as e:
                         result_box.error(f"⚠️ Hata: {e}")
+                    time.sleep(0.5)
 
-                    time.sleep(5)
-
-        # --- Sayı Girerek Veri Alımı ---
         if mode == "🔢 Sayı Girerek Alım":
             num_requests = st.number_input("📦 Kaç işlem alınsın?", min_value=1, max_value=100, value=5)
             start_fixed = st.button("▶️ Belirli Sayıda Al", key="start_fixed")
@@ -290,12 +314,16 @@ def main():
 
         try:
             df_feat = pd.read_csv("model/feature_importance.csv")
-            st.bar_chart(df_feat.set_index("feature"))
+            if "feature" in df_feat.columns and "importance" in df_feat.columns:
+                st.bar_chart(df_feat.set_index("feature"))
+            else:
+                st.warning("CSV'de beklenen sütunlar bulunamadı.")
         except Exception as e:
             st.warning(f"Özellik önem grafiği yüklenemedi: {e}")
 
         st.caption("📌 Bu grafik, modelin hangi özelliklere göre karar verdiğini göstermektedir. \
         Yüksek skor, modelin bu özelliği daha çok dikkate aldığı anlamına gelir.")
+
 
 if __name__ == "__main__":
     main()
