@@ -100,11 +100,19 @@ def main():
             anomaly_rate = (anomaly_count / total_txns) * 100
             avg_amount = df['amount'].mean()
 
-            col1, col2, col3, col4 = st.columns(4)
+            # ✅ RİSK METRİĞİ EKLENDİ
+            conn = sqlite3.connect("anomaly_detection.db")
+            cursor = conn.cursor()
+            cursor.execute("SELECT risk_score FROM users WHERE user_id = ?", (selected_user,))
+            risk = cursor.fetchone()[0]
+            conn.close()
+
+            col1, col2, col3, col4, col5 = st.columns(5)
             col1.metric("📦 Toplam İşlem", total_txns)
             col2.metric("⚠️ Anomali Sayısı", anomaly_count)
             col3.metric("📉 Anomali Oranı", f"{anomaly_rate:.1f}%")
             col4.metric("💸 Ortalama Tutar", f"{avg_amount:.2f} TL")
+            col5.metric("🔥 Risk Skoru", f"{risk} / 100")
 
             st.subheader("📌 Anomali Dağılımı")
             counts = df["is_anomaly"].value_counts().rename({0: "Normal", 1: "Anomali"})
@@ -131,12 +139,14 @@ def main():
             df_anomalies = df[df["is_anomaly"] == 1].copy()
             df_anomalies["txn_time"] = pd.to_datetime(df_anomalies["txn_time"])
             df_anomalies = df_anomalies.sort_values("txn_time", ascending=False)
+            df_anomalies["anomaly_score"] = df_anomalies["anomaly_score"].fillna(0).astype(float)
 
             st.subheader(f"🔎 {selected_user} Kullanıcısına Ait {len(df_anomalies)} Anomali İşlem")
 
             cols_to_show = [
                 "txn_time", "amount", "location", "transaction_type", "device_type",
-                "channel", "browser_info", "os_type", "ip_address", "session_duration"
+                "channel", "browser_info", "os_type", "ip_address", "session_duration",
+                "anomaly_score"
             ]
 
             st.dataframe(df_anomalies[cols_to_show])
@@ -215,7 +225,7 @@ def main():
                 </div>
             """, unsafe_allow_html=True)
 
-            result = insert_transaction(
+            is_anomaly, anomaly_score = insert_transaction(
                 user_id=data["user_id"],
                 amount=data["amount"],
                 txn_time=data["txn_time"],
@@ -229,16 +239,34 @@ def main():
                 session_duration=data.get("session_duration")
             )
 
-            if result == 1:
-                result_box.markdown("""
+            if is_anomaly == 1:
+                result_box.markdown(f"""
                     <div style='background-color:#f8d7da; padding:10px; border-radius:10px;'>
-                        🚨 Anomali tespit edildi!
+                        🚨 <b>Anomali Tespit Edildi!</b><br>
+                        🔎 <b>Model Skoru:</b> {anomaly_score:.2f}
+                    </div>
+                """, unsafe_allow_html=True)
+
+                bar_color = (
+                    "#28a745" if anomaly_score < 0.4 else  # yeşil
+                    "#ffc107" if anomaly_score < 0.75 else  # sarı
+                    "#dc3545"  # kırmızı
+                )
+
+                result_box.markdown(f"""
+                    <div style="margin-top: 10px;">
+                        <b>Anomali Skor Çubuğu:</b>
+                        <div style="background-color:#e9ecef; width: 100%; height: 20px; border-radius: 10px;">
+                            <div style="width: {anomaly_score * 100:.1f}%; background-color:{bar_color};
+                                        height: 100%; border-radius: 10px;"></div>
+                        </div>
                     </div>
                 """, unsafe_allow_html=True)
             else:
-                result_box.markdown("""
+                result_box.markdown(f"""
                     <div style='background-color:#d4edda; padding:10px; border-radius:10px;'>
-                        ✅ İşlem normal.
+                        ✅ <b>İşlem Normal</b><br>
+                        🔎 <b>Model Skoru:</b> {anomaly_score:.2f}
                     </div>
                 """, unsafe_allow_html=True)
 
@@ -262,7 +290,7 @@ def main():
                             status_box.warning(f"⚠️ Beklenmedik yanıt: {response.status_code}")
                     except Exception as e:
                         result_box.error(f"⚠️ Hata: {e}")
-                    time.sleep(0.5)
+                    time.sleep(2)
 
         if mode == "🔢 Sayı Girerek Alım":
             num_requests = st.number_input("📦 Kaç işlem alınsın?", min_value=1, max_value=100, value=5)
@@ -309,6 +337,23 @@ def main():
         except FileNotFoundError:
             st.warning(
                 "⚠️ Performans raporu bulunamadı. Lütfen önce `ml_train.py` dosyasını çalıştırarak modeli eğitin.")
+
+
+        st.subheader("📉 ROC Curve")
+
+        try:
+            st.image("model/roc_curve.png", caption="ROC Eğrisi")
+        except Exception as e:
+            st.warning(f"ROC görseli yüklenemedi: {e}")
+
+        st.subheader("📈 Precision-Recall Curve")
+
+        try:
+            st.image("model/pr_curve.png", caption="Precision-Recall Eğrisi")
+        except Exception as e:
+            st.warning(f"Precision-Recall görseli yüklenemedi: {e}")
+
+
 
         st.subheader("🔍 Özellik Önem Grafiği")
 

@@ -15,10 +15,8 @@ columns = {
 
 for col, dtype in columns.items():
     try:
-        cursor.execute(f"ALTER TABLE transactions ADD COLUMN {col} {dtype}")
-        print(f"✅ '{col}' sütunu eklendi.")
+        cursor.execute("ALTER TABLE transactions ADD COLUMN anomaly_score REAL")
     except:
-        print(f"🔁 '{col}' sütunu zaten mevcut.")
-
+        print("🔁 'anomaly_score' zaten mevcut.")
 conn.commit()
 conn.close()

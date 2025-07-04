@@ -10,6 +10,8 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import classification_report
 import matplotlib.pyplot as plt
+from sklearn.metrics import roc_curve, auc, precision_recall_curve
+
 
 # ================================
 # 🧠 2. VERİYİ VERİTABANINDAN ÇEK
@@ -40,16 +42,16 @@ label_location = LabelEncoder()
 label_transaction_type = LabelEncoder()
 label_device_type = LabelEncoder()
 label_channel = LabelEncoder()
-label_browser = LabelEncoder()
-label_os = LabelEncoder()
+label_browser_info = LabelEncoder()
+label_os_type = LabelEncoder()
 
 df["user_id"] = label_user.fit_transform(df["user_id"])
 df["location"] = label_location.fit_transform(df["location"])
 df["transaction_type"] = label_transaction_type.fit_transform(df["transaction_type"].fillna("unknown"))
 df["device_type"] = label_device_type.fit_transform(df["device_type"].fillna("unknown"))
 df["channel"] = label_channel.fit_transform(df["channel"].fillna("unknown"))
-df["browser_info"] = label_browser.fit_transform(df["browser_info"].fillna("unknown"))
-df["os_type"] = label_os.fit_transform(df["os_type"].fillna("unknown"))
+df["browser_info"] = label_browser_info.fit_transform(df["browser_info"].fillna("unknown"))
+df["os_type"] = label_os_type.fit_transform(df["os_type"].fillna("unknown"))
 
 # ================================
 # 🧪 6. GİRİŞ / HEDEF AYIRIMI
@@ -81,6 +83,41 @@ report = classification_report(y_test, y_pred)
 print("🔍 Model Performansı:\n")
 print(report)
 
+
+# ================================
+# 📈 9.1 ROC ve PR Curve GRAFİĞİ
+# ================================
+y_proba = model.predict_proba(X_test)[:, 1]
+
+# ROC Curve
+fpr, tpr, _ = roc_curve(y_test, y_proba)
+roc_auc = auc(fpr, tpr)
+
+plt.figure(figsize=(5, 4))
+plt.plot(fpr, tpr, label=f"ROC AUC = {roc_auc:.2f}")
+plt.plot([0, 1], [0, 1], linestyle='--', color='gray')
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+plt.title("ROC Curve")
+plt.legend(loc="lower right")
+plt.tight_layout()
+plt.savefig("model/roc_curve.png")
+plt.close()
+
+# Precision-Recall Curve
+precision, recall, _ = precision_recall_curve(y_test, y_proba)
+
+plt.figure(figsize=(5, 4))
+plt.plot(recall, precision, color="darkorange")
+plt.xlabel("Recall")
+plt.ylabel("Precision")
+plt.title("Precision-Recall Curve")
+plt.tight_layout()
+plt.savefig("model/pr_curve.png")
+plt.close()
+
+
+
 # ================================
 # 💾 10. MODEL VE ENCODER'LARI KAYDET
 # ================================
@@ -91,8 +128,8 @@ joblib.dump(label_location, "model/label_location.pkl")
 joblib.dump(label_transaction_type, "model/label_transaction_type.pkl")
 joblib.dump(label_device_type, "model/label_device_type.pkl")
 joblib.dump(label_channel, "model/label_channel.pkl")
-joblib.dump(label_browser, "model/label_browser.pkl")
-joblib.dump(label_os, "model/label_os.pkl")
+joblib.dump(label_browser_info, "model/label_browser_info.pkl")
+joblib.dump(label_os_type, "model/label_os_type.pkl")
 
 # ================================
 # 📝 11. PERFORMANS RAPORUNU KAYDET
