@@ -31,6 +31,29 @@ except Exception as e:
     print(f"⚠️ Model veya encoder dosyaları yüklenemedi: {e}")
     model = None
 
+import requests
+
+# --- Telegrama bor aracılığı ile mesaj gönder ---
+def send_telegram_alert(user_id, amount, location, anomaly_score):
+    BOT_TOKEN = "TOKEN_ID"
+    CHAT_ID = "CHAT_ID"
+
+    message = f"""
+🚨 <b>Anomali Tespit Edildi</b>
+👤 <b>Kullanıcı:</b> {user_id}
+💸 <b>Tutar:</b> {amount} TL
+📍 <b>Lokasyon:</b> {location}
+🧠 <b>Model Skoru:</b> {anomaly_score:.2f}
+"""
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    data = {
+        "chat_id": CHAT_ID,
+        "text": message,
+        "parse_mode": "HTML"
+    }
+    requests.post(url, data=data)
+
+
 # --- Yeni işlem veritabanına kaydeder ---
 def insert_transaction(user_id, amount, txn_time, location,
                        transaction_type=None, device_type=None, channel=None,
@@ -136,5 +159,8 @@ def insert_transaction(user_id, amount, txn_time, location,
             print("✅ Model yeniden eğitildi.")
         except Exception as e:
             print(f"❌ Model eğitimi hatası: {e}")
+
+    if is_anomaly == 1:
+        send_telegram_alert(user_id, amount, location, anomaly_score)
 
     return is_anomaly, anomaly_score
