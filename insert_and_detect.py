@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 import pandas as pd
+import requests
 
 # --- Model ve encoder dosyaları ---
 MODEL_PATH = "model/anomaly_model.pkl"
@@ -31,12 +32,11 @@ except Exception as e:
     print(f"⚠️ Model veya encoder dosyaları yüklenemedi: {e}")
     model = None
 
-import requests
 
 # --- Telegrama bor aracılığı ile mesaj gönder ---
 def send_telegram_alert(user_id, amount, location, anomaly_score):
-    BOT_TOKEN = "TOKEN_ID"
-    CHAT_ID = "CHAT_ID"
+    BOT_TOKEN = "7691631732:AAHcRucTL9vCZp1FovXNdm-nsNczvSRSEmc"
+    CHAT_ID = "5630479338"
 
     message = f"""
 🚨 <b>Anomali Tespit Edildi</b>

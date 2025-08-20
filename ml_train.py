@@ -20,23 +20,15 @@ conn = sqlite3.connect("anomaly_detection.db")
 df = pd.read_sql_query("SELECT * FROM transactions", conn)
 conn.close()
 
-# ================================
-# 🕒 3. ZAMAN SÜTUNUNDAN SAATİ AYIKLA
-# ================================
 df["txn_time"] = pd.to_datetime(df["txn_time"])
 df["hour"] = df["txn_time"].dt.hour
 
-# ================================
-# 🧹 4. KULLANILACAK SÜTUNLARI SEÇ
-# ================================
 df = df[[
     "user_id", "amount", "hour", "location", "transaction_type",
-    "device_type", "channel", "browser_info", "os_type", "session_duration", "is_anomaly"
+    "device_type", "channel", "browser_info",
+    "os_type", "session_duration", "is_anomaly"
 ]]
 
-# ================================
-# 🔢 5. LABEL ENCODING (Kategorikleri Sayıya Çevir)
-# ================================
 label_user = LabelEncoder()
 label_location = LabelEncoder()
 label_transaction_type = LabelEncoder()
@@ -53,34 +45,27 @@ df["channel"] = label_channel.fit_transform(df["channel"].fillna("unknown"))
 df["browser_info"] = label_browser_info.fit_transform(df["browser_info"].fillna("unknown"))
 df["os_type"] = label_os_type.fit_transform(df["os_type"].fillna("unknown"))
 
-# ================================
-# 🧪 6. GİRİŞ / HEDEF AYIRIMI
-# ================================
 X = df[[
     "user_id", "amount", "hour", "location", "transaction_type",
     "device_type", "channel", "browser_info", "os_type", "session_duration"
 ]]
 y = df["is_anomaly"]
 
-# ================================
-# 🔀 7. EĞİTİM / TEST AYRIMI
-# ================================
+
+
+# Train-test split
 X_train, X_test, y_train, y_test = train_test_split(
     X, y, test_size=0.2, random_state=42
 )
 
-# ================================
-# 🎯 8. MODELİ EĞİT
-# ================================
+# Model training
 model = RandomForestClassifier(n_estimators=100, random_state=42)
 model.fit(X_train, y_train)
 
-# ================================
-# 📊 9. TEST SONUCU DEĞERLENDİR
-# ================================
+# Evaluation
 y_pred = model.predict(X_test)
 report = classification_report(y_test, y_pred)
-print("🔍 Model Performansı:\n")
+print("🔍 Model Performance:\n")
 print(report)
 
 
@@ -117,10 +102,6 @@ plt.savefig("model/pr_curve.png")
 plt.close()
 
 
-
-# ================================
-# 💾 10. MODEL VE ENCODER'LARI KAYDET
-# ================================
 os.makedirs("model", exist_ok=True)
 joblib.dump(model, "model/anomaly_model.pkl")
 joblib.dump(label_user, "model/label_user.pkl")
@@ -131,15 +112,6 @@ joblib.dump(label_channel, "model/label_channel.pkl")
 joblib.dump(label_browser_info, "model/label_browser_info.pkl")
 joblib.dump(label_os_type, "model/label_os_type.pkl")
 
-# ================================
-# 📝 11. PERFORMANS RAPORUNU KAYDET
-# ================================
-with open("model/performance_report.txt", "w") as f:
-    f.write(report)
-
-# ================================
-# 📈 12. ÖZELLİK ÖNEMİNİ GRAFİĞE DÖK
-# ================================
 feature_names = [
     "user_id", "amount", "hour", "location", "transaction_type",
     "device_type", "channel", "browser_info", "os_type", "session_duration"
@@ -151,7 +123,6 @@ importance_df = pd.DataFrame({
     "importance": importances
 }).sort_values(by="importance", ascending=False)
 
-# CSV olarak kaydet
 importance_df.to_csv("model/feature_importance.csv", index=False)
 
 # (İsteğe bağlı) PNG görseli olarak kaydet

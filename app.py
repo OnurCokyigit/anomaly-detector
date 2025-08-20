@@ -23,39 +23,40 @@ def load_user_data(user_id):
     conn.close()
     return df
 
+
 def main():
-    st.set_page_config(page_title="Anomali Tespiti", layout="wide")
-    st.title("📊 Anomali Tespiti Sistemi")
+    st.set_page_config(page_title="Anomaly Detection", layout="wide")
+    st.title("📊 Anomaly Detection System")
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs([
-        "➕ İşlem Ekle",
-        "📈 Grafiksel Analiz",
-        "🚨 Anomaliler",
-        "📡 Canlı Veri Akışı",
-        "🧠 Model Performansı"
+        "➕ Add Transaction",
+        "📈 Graphical Analysis",
+        "🚨 Anomalies",
+        "📡 Live Data Stream",
+        "🧠 Model Performance"
     ])
 
     with tab1:
-        st.header("Yeni İşlem Ekle")
+        st.header("Add New Transaction")
         user_ids = get_user_ids()
-        user_id = st.selectbox("Kullanıcı Seç", user_ids)
-        amount = st.number_input("İşlem Tutarı (TL)", min_value=1.0, step=1.0)
-        location = st.selectbox("Lokasyon Seç", get_location_list())
+        user_id = st.selectbox("Select User", user_ids)
+        amount = st.number_input("Transaction Amount (TL)", min_value=1.0, step=1.0)
+        location = st.selectbox("Select Location", get_location_list())
 
-        date = st.date_input("İşlem Tarihi", datetime.now().date())
-        txn_time_input = st.time_input("İşlem Saati", datetime.now().time())
+        date = st.date_input("Transaction Date", datetime.now().date())
+        txn_time_input = st.time_input("Transaction Time", datetime.now().time())
         txn_time = datetime.combine(date, txn_time_input)
         txn_time_str = txn_time.strftime("%Y-%m-%d %H:%M:%S")
 
-        transaction_type = st.text_input("İşlem Türü (ör. ödeme, transfer)")
-        device_type = st.text_input("Cihaz Türü (ör. Mobile, Desktop)")
-        channel = st.text_input("Kanal (ör. Web, App)")
-        browser_info = st.text_input("Tarayıcı Bilgisi (ör. Chrome)")
-        os_type = st.text_input("İşletim Sistemi (ör. Windows, Android)")
-        ip_address = st.text_input("IP Adresi")
-        session_duration = st.number_input("Oturum Süresi (saniye)", min_value=0.0, step=1.0)
+        transaction_type = st.text_input("Transaction Type (e.g., payment, transfer)")
+        device_type = st.text_input("Device Type (e.g., Mobile, Desktop)")
+        channel = st.text_input("Channel (e.g., Web, App)")
+        browser_info = st.text_input("Browser Info (e.g., Chrome)")
+        os_type = st.text_input("Operating System (e.g., Windows, Android)")
+        ip_address = st.text_input("IP Address")
+        session_duration = st.number_input("Session Duration (seconds)", min_value=0.0, step=1.0)
 
-        if st.button("💾 İşlemi Kaydet"):
+        if st.button("💾 Save Transaction"):
             result = insert_transaction(
                 user_id, amount, txn_time_str, location,
                 transaction_type, device_type, channel,
@@ -65,42 +66,42 @@ def main():
             if result is None:
                 st.markdown("""
                     <div style='background-color:#fff3cd; padding:10px; border-radius:10px;'>
-                        ⚠️ Bu işlem zaten kayıtlı.
+                        ⚠️ This transaction is already recorded.
                     </div>
                 """, unsafe_allow_html=True)
             elif result == 1:
                 st.markdown("""
                     <div style='background-color:#f8d7da; padding:10px; border-radius:10px;'>
-                        ❗ Anomali tespit edildi ve işlem kaydedildi.
+                        ❗ Anomaly detected and the transaction was recorded.
                     </div>
                 """, unsafe_allow_html=True)
             else:
                 st.markdown("""
                     <div style='background-color:#d4edda; padding:10px; border-radius:10px;'>
-                        ✅ İşlem normal ve başarıyla kaydedildi.
+                        ✅ Transaction is normal and has been successfully recorded.
                     </div>
                 """, unsafe_allow_html=True)
 
     with tab2:
-        st.header("Kullanıcı Bazlı Görselleştirme")
+        st.header("User-Based Visualization")
         user_ids = get_user_ids()
-        selected_user = st.selectbox("Grafik için kullanıcı seç", user_ids, key="viz_user")
+        selected_user = st.selectbox("Select user for chart", user_ids, key="viz_user")
         df = load_user_data(selected_user)
 
         if df.empty:
             st.markdown("""
                 <div style='background-color:#fff3cd; padding:10px; border-radius:10px;'>
-                    Bu kullanıcıya ait işlem verisi yok.
+                    There is no transaction data for this user.
                 </div>
             """, unsafe_allow_html=True)
         else:
-            st.subheader("📊 Özet Metrikler")
+            st.subheader("📊 Summary Metrics")
             total_txns = len(df)
             anomaly_count = df['is_anomaly'].sum()
             anomaly_rate = (anomaly_count / total_txns) * 100
             avg_amount = df['amount'].mean()
 
-            # ✅ RİSK METRİĞİ EKLENDİ
+            # ✅ RISK METRIC ADDED
             conn = sqlite3.connect("anomaly_detection.db")
             cursor = conn.cursor()
             cursor.execute("SELECT risk_score FROM users WHERE user_id = ?", (selected_user,))
@@ -108,40 +109,40 @@ def main():
             conn.close()
 
             col1, col2, col3, col4, col5 = st.columns(5)
-            col1.metric("📦 Toplam İşlem", total_txns)
-            col2.metric("⚠️ Anomali Sayısı", anomaly_count)
-            col3.metric("📉 Anomali Oranı", f"{anomaly_rate:.1f}%")
-            col4.metric("💸 Ortalama Tutar", f"{avg_amount:.2f} TL")
-            col5.metric("🔥 Risk Skoru", f"{risk} / 100")
+            col1.metric("📦 Total Transactions", total_txns)
+            col2.metric("⚠️ Anomaly Count", anomaly_count)
+            col3.metric("📉 Anomaly Rate", f"{anomaly_rate:.1f}%")
+            col4.metric("💸 Average Amount", f"{avg_amount:.2f} TL")
+            col5.metric("🔥 Risk Score", f"{risk} / 100")
 
-            st.subheader("📌 Anomali Dağılımı")
-            counts = df["is_anomaly"].value_counts().rename({0: "Normal", 1: "Anomali"})
+            st.subheader("📌 Anomaly Distribution")
+            counts = df["is_anomaly"].value_counts().rename({0: "Normal", 1: "Anomaly"})
             st.bar_chart(counts)
 
-            st.subheader("🕒 Saat Dağılımı")
+            st.subheader("🕒 Hourly Distribution")
             df["txn_time"] = pd.to_datetime(df["txn_time"])
             df["hour"] = df["txn_time"].dt.hour
             st.bar_chart(df["hour"].value_counts().sort_index())
 
     with tab3:
-        st.header("🚨 Anomali İşlemleri")
+        st.header("🚨 Anomaly Transactions")
         user_ids = get_user_ids()
-        selected_user = st.selectbox("Anomali görüntüleme için kullanıcı seç", user_ids, key="anomaly_user")
+        selected_user = st.selectbox("Select user to view anomalies", user_ids, key="anomaly_user")
         df = load_user_data(selected_user)
 
         if df.empty or df['is_anomaly'].sum() == 0:
             st.markdown("""
-                            <div style='background-color:#d1ecf1; padding:10px; border-radius:10px;'>
-                                Bu kullanıcıya ait anomali işlemi bulunmamaktadır.
-                            </div>
-                        """, unsafe_allow_html=True)
+                <div style='background-color:#d1ecf1; padding:10px; border-radius:10px;'>
+                    There are no anomaly transactions for this user.
+                </div>
+            """, unsafe_allow_html=True)
         else:
             df_anomalies = df[df["is_anomaly"] == 1].copy()
             df_anomalies["txn_time"] = pd.to_datetime(df_anomalies["txn_time"])
             df_anomalies = df_anomalies.sort_values("txn_time", ascending=False)
             df_anomalies["anomaly_score"] = df_anomalies["anomaly_score"].fillna(0).astype(float)
 
-            st.subheader(f"🔎 {selected_user} Kullanıcısına Ait {len(df_anomalies)} Anomali İşlem")
+            st.subheader(f"🔎 {len(df_anomalies)} Anomaly Transactions for User {selected_user}")
 
             cols_to_show = [
                 "txn_time", "amount", "location", "transaction_type", "device_type",
@@ -152,7 +153,7 @@ def main():
             st.dataframe(df_anomalies[cols_to_show])
 
             st.download_button(
-                label="📥 Anomalileri İndir (CSV)",
+                label="📥 Download Anomalies (CSV)",
                 data=df_anomalies[cols_to_show].to_csv(index=False).encode("utf-8"),
                 file_name=f"user_{selected_user}_anomalies.csv",
                 mime="text/csv"
@@ -160,7 +161,7 @@ def main():
 
             st.markdown("---")
             st.bar_chart(df_anomalies.set_index("txn_time")["amount"])
-            st.caption("🟠 Zaman serisine göre anomali tutarlarının dağılımı")
+            st.caption("🟠 Distribution of anomaly amounts over the time series")
 
     # with tab4:
     #     st.header("📡 Canlı Veri Akışı (API Tabanlı)")
@@ -193,10 +194,10 @@ def main():
     #             st.error(f"⚠️ Hata: {e}")
 
     with tab4:
-        st.header("📡 Canlı Veri Akışı (API Tabanlı)")
-        st.markdown("Bu sekmede API üzerinden veri alımı yapabilirsiniz.")
+        st.header("📡 Live Data Stream (API Based)")
+        st.markdown("In this tab, you can fetch data via API.")
 
-        mode = st.radio("Veri alma modu seçin:", ["🔁 Otomatik Akış", "🔢 Sayı Girerek Alım"], horizontal=True)
+        mode = st.radio("Select data fetch mode:", ["🔁 Automatic Stream", "🔢 Fetch by Number"], horizontal=True)
 
         if "stop_stream" not in st.session_state:
             st.session_state["stop_stream"] = False
@@ -205,23 +206,23 @@ def main():
         result_box = st.empty()
 
         def handle_result(data, index=None, total=None):
-            txn_info = f"📥 Yeni Veri Alındı"
+            txn_info = f"📥 New Data Received"
             if index is not None and total is not None:
                 txn_info += f" ({index}/{total})"
 
             status_box.markdown(f"""
                 <div style="background-color:#f0f2f6; padding:10px; border-radius:10px">
                     <b>{txn_info}:</b><br>
-                    👤 <b>Kullanıcı ID:</b> {data['user_id']}<br>
-                    💸 <b>Tutar:</b> {data['amount']} TL<br>
-                    🗺️ <b>Lokasyon:</b> {data['location']}<br>
-                    ⏰ <b>Zaman:</b> {data['txn_time']}<br>
-                    🧾 <b>İşlem Türü:</b> {data['transaction_type']}<br>
-                    💻 <b>Cihaz:</b> {data['device_type']} / {data['channel']}<br>
-                    🌐 <b>Tarayıcı:</b> {data['browser_info']}<br>
-                    🧠 <b>İşletim Sistemi:</b> {data['os_type']}<br>
+                    👤 <b>User ID:</b> {data['user_id']}<br>
+                    💸 <b>Amount:</b> {data['amount']} TL<br>
+                    🗺️ <b>Location:</b> {data['location']}<br>
+                    ⏰ <b>Time:</b> {data['txn_time']}<br>
+                    🧾 <b>Transaction Type:</b> {data['transaction_type']}<br>
+                    💻 <b>Device:</b> {data['device_type']} / {data['channel']}<br>
+                    🌐 <b>Browser:</b> {data['browser_info']}<br>
+                    🧠 <b>Operating System:</b> {data['os_type']}<br>
                     📶 <b>IP:</b> {data['ip_address']}<br>
-                    ⏱️ <b>Süre:</b> {data['session_duration']} sn
+                    ⏱️ <b>Session Duration:</b> {data['session_duration']} s
                 </div>
             """, unsafe_allow_html=True)
 
@@ -242,20 +243,20 @@ def main():
             if is_anomaly == 1:
                 result_box.markdown(f"""
                     <div style='background-color:#f8d7da; padding:10px; border-radius:10px;'>
-                        🚨 <b>Anomali Tespit Edildi!</b><br>
-                        🔎 <b>Model Skoru:</b> {anomaly_score:.2f}
+                        🚨 <b>Anomaly Detected!</b><br>
+                        🔎 <b>Model Score:</b> {anomaly_score:.2f}
                     </div>
                 """, unsafe_allow_html=True)
 
                 bar_color = (
-                    "#28a745" if anomaly_score < 0.4 else  # yeşil
-                    "#ffc107" if anomaly_score < 0.75 else  # sarı
-                    "#dc3545"  # kırmızı
+                    "#28a745" if anomaly_score < 0.4 else  # green
+                    "#ffc107" if anomaly_score < 0.75 else  # yellow
+                    "#dc3545"  # red
                 )
 
                 result_box.markdown(f"""
                     <div style="margin-top: 10px;">
-                        <b>Anomali Skor Çubuğu:</b>
+                        <b>Anomaly Score Bar:</b>
                         <div style="background-color:#e9ecef; width: 100%; height: 20px; border-radius: 10px;">
                             <div style="width: {anomaly_score * 100:.1f}%; background-color:{bar_color};
                                         height: 100%; border-radius: 10px;"></div>
@@ -265,21 +266,21 @@ def main():
             else:
                 result_box.markdown(f"""
                     <div style='background-color:#d4edda; padding:10px; border-radius:10px;'>
-                        ✅ <b>İşlem Normal</b><br>
-                        🔎 <b>Model Skoru:</b> {anomaly_score:.2f}
+                        ✅ <b>Normal Transaction</b><br>
+                        🔎 <b>Model Score:</b> {anomaly_score:.2f}
                     </div>
                 """, unsafe_allow_html=True)
 
-        if mode == "🔁 Otomatik Akış":
-            start_button = st.button("▶️ Otomatik Akışı Başlat")
-            stop_button = st.button("⛔ Durdur")
+        if mode == "🔁 Automatic Stream":
+            start_button = st.button("▶️ Start Automatic Stream")
+            stop_button = st.button("⛔ Stop")
 
             if stop_button:
                 st.session_state["stop_stream"] = True
 
             if start_button:
                 st.session_state["stop_stream"] = False
-                status_box.info("📡 Otomatik veri akışı başladı...")
+                status_box.info("📡 Automatic data stream started...")
                 while not st.session_state["stop_stream"]:
                     try:
                         response = requests.get("http://127.0.0.1:8000/transaction")
@@ -287,26 +288,26 @@ def main():
                             data = response.json()
                             handle_result(data)
                         else:
-                            status_box.warning(f"⚠️ Beklenmedik yanıt: {response.status_code}")
+                            status_box.warning(f"⚠️ Unexpected response: {response.status_code}")
                     except Exception as e:
-                        result_box.error(f"⚠️ Hata: {e}")
+                        result_box.error(f"⚠️ Error: {e}")
                     time.sleep(2)
 
-        if mode == "🔢 Sayı Girerek Alım":
-            num_requests = st.number_input("📦 Kaç işlem alınsın?", min_value=1, max_value=100, value=5)
-            start_fixed = st.button("▶️ Belirli Sayıda Al", key="start_fixed")
-            stop_fixed = st.button("⛔ Durdur", key="stop_fixed")
+        if mode == "🔢 Fetch by Number":
+            num_requests = st.number_input("📦 How many transactions to fetch?", min_value=1, max_value=100, value=5)
+            start_fixed = st.button("▶️ Fetch Specified Number", key="start_fixed")
+            stop_fixed = st.button("⛔ Stop", key="stop_fixed")
 
             if stop_fixed:
                 st.session_state["stop_stream"] = True
 
             if start_fixed:
                 st.session_state["stop_stream"] = False
-                status_box.info("🔢 Belirli sayıda veri alımı başladı...")
+                status_box.info("🔢 Fetching specified number of data...")
 
                 for i in range(int(num_requests)):
                     if st.session_state["stop_stream"]:
-                        status_box.warning("⛔ Veri alımı durduruldu.")
+                        status_box.warning("⛔ Data fetch stopped.")
                         break
 
                     try:
@@ -315,59 +316,57 @@ def main():
                             data = response.json()
                             handle_result(data, i + 1, num_requests)
                         else:
-                            status_box.warning(f"⚠️ Beklenmedik yanıt: {response.status_code}")
+                            status_box.warning(f"⚠️ Unexpected response: {response.status_code}")
                     except Exception as e:
-                        result_box.error(f"⚠️ Hata: {e}")
+                        result_box.error(f"⚠️ Error: {e}")
 
                     time.sleep(5)
 
     with tab5:
-        st.header("🧠 Model Başarımı")
-
+        st.header("🧠 Model Performance")
         st.markdown(
-            "Bu sekmede, makine öğrenmesi modelimizin doğruluk (accuracy), hassasiyet (precision), geri çağırma (recall) ve F1 skorunu görebilirsiniz.")
-
+            "In this tab, you can view the machine learning model's accuracy, precision, recall, and F1 score."
+        )
         try:
             with open("model/performance_report.txt", "r") as f:
                 report_txt = f.read()
 
             st.code(report_txt, language="text")
-            st.success("✅ Son model başarı raporu başarıyla yüklendi.")
-
+            st.success("✅ Latest model performance report loaded successfully.")
         except FileNotFoundError:
             st.warning(
-                "⚠️ Performans raporu bulunamadı. Lütfen önce `ml_train.py` dosyasını çalıştırarak modeli eğitin.")
-
+                "⚠️ Performance report not found. Please train the model first by running `ml_train.py`."
+            )
 
         st.subheader("📉 ROC Curve")
 
         try:
-            st.image("model/roc_curve.png", caption="ROC Eğrisi")
+            st.image("model/roc_curve.png", caption="ROC Curve")
         except Exception as e:
-            st.warning(f"ROC görseli yüklenemedi: {e}")
+            st.warning(f"Could not load ROC curve image: {e}")
 
         st.subheader("📈 Precision-Recall Curve")
 
         try:
-            st.image("model/pr_curve.png", caption="Precision-Recall Eğrisi")
+            st.image("model/pr_curve.png", caption="Precision-Recall Curve")
         except Exception as e:
-            st.warning(f"Precision-Recall görseli yüklenemedi: {e}")
+            st.warning(f"Could not load Precision-Recall curve image: {e}")
 
-
-
-        st.subheader("🔍 Özellik Önem Grafiği")
+        st.subheader("🔍 Feature Importance Chart")
 
         try:
             df_feat = pd.read_csv("model/feature_importance.csv")
             if "feature" in df_feat.columns and "importance" in df_feat.columns:
                 st.bar_chart(df_feat.set_index("feature"))
             else:
-                st.warning("CSV'de beklenen sütunlar bulunamadı.")
+                st.warning("Expected columns not found in the CSV.")
         except Exception as e:
-            st.warning(f"Özellik önem grafiği yüklenemedi: {e}")
+            st.warning(f"Could not load feature importance chart: {e}")
 
-        st.caption("📌 Bu grafik, modelin hangi özelliklere göre karar verdiğini göstermektedir. \
-        Yüksek skor, modelin bu özelliği daha çok dikkate aldığı anlamına gelir.")
+        st.caption(
+            "📌 This chart shows which features the model considers most important for decision making. "
+            "A higher score means the model pays more attention to that feature."
+        )
 
 
 if __name__ == "__main__":

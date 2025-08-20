@@ -1,10 +1,8 @@
 from fastapi import FastAPI
 from datetime import datetime
 import random
-
 app = FastAPI()
 
-# Sahte veri için parametre havuzu
 user_ids = [1, 2, 3, 4, 5]
 locations = ["Istanbul", "Ankara", "Izmir", "Bursa", "Antalya"]
 transaction_types = ["odeme", "transfer", "cekme"]
@@ -30,3 +28,7 @@ def get_transaction():
         "session_duration": round(random.uniform(5, 600), 2)
     }
     return transaction
+
+
+
+

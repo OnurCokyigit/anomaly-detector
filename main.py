@@ -1,10 +1,8 @@
 import sqlite3
 
-# Veritabanına bağlan (dosya yoksa otomatik oluşturur)
 conn = sqlite3.connect("anomaly_detection.db")
 cursor = conn.cursor()
 
-# users tablosunu oluştur
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS users (
     user_id INTEGER PRIMARY KEY,
@@ -13,7 +11,6 @@ CREATE TABLE IF NOT EXISTS users (
 )
 """)
 
-# transactions tablosunu oluştur
 cursor.execute("""
 CREATE TABLE IF NOT EXISTS transactions (
     txn_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,8 +23,10 @@ CREATE TABLE IF NOT EXISTS transactions (
 )
 """)
 
-# Değişiklikleri kaydet ve bağlantıyı kapat
 conn.commit()
 conn.close()
 
-print("✅ Veritabanı ve tablolar başarıyla oluşturuldu.")
+print("✅ Database and tables have been created successfully.")
+
+
+
